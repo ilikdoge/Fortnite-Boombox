@@ -8,6 +8,6 @@
     "string-similarity": "^4.0.4"
   },
   "scripts": {
-    "install": "cmake-js build"
+    "install": "cmake-js compile"
   }
 }
