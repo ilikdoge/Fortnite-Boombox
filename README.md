@@ -4,12 +4,10 @@ old project
 
 ## building and running
 
-<code>
-git clone https://github.com/ilikdoge/Fortnite-Boombox.git<br>
-cd Fortnite-Boombox<br>
-git submodule update --init --recursive<br>
-npm install<br>
-</code>
+<code>git clone https://github.com/ilikdoge/Fortnite-Boombox.git</code><br>
+<code>cd Fortnite-Boombox</code><br>
+<code>git submodule update --init --recursive</code><br>
+<code>npm install</code><br>
 
 ### running
 
