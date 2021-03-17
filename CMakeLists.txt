@@ -1,0 +1,25 @@
+set(PROJECT_NAME "natives")
+add_definitions("-fPIC -O3")
+project(${PROJECT_NAME})
+
+include_directories(${CMAKE_JS_INC})
+
+set(OGG_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/native/ogg")
+set(OGG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/native/ogg/include")
+
+add_subdirectory("native/ogg")
+add_subdirectory("native/fdk-aac")
+include_directories("native/fdk-aac/libAACdec/include")
+include_directories("native/fdk-aac/libSYS/include")
+add_subdirectory("native/opus")
+include_directories("native/opus/include")
+add_subdirectory("native/vorbis")
+include_directories("native/vorbis/include")
+include_directories("native/vorbis/include")
+add_subdirectory("native/libsamplerate")
+include_directories("native/libsamplerate/include")
+
+add_library(${PROJECT_NAME} SHARED "native/addon/${PROJECT_NAME}.cpp" "native/addon/adapter/aac/decode.cpp" "native/addon/adapter/opus/encode.cpp" "native/addon/adapter/opus/decode.cpp" "native/addon/adapter/vorbis/decode.cpp" "native/addon/adapter/resample/resample.cpp" "native/addon/util/util.cpp")
+set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".node")
+target_include_directories(${PROJECT_NAME} PRIVATE "native/node-addon-api")
+target_link_libraries(${PROJECT_NAME} ${CMAKE_JS_LIB} fdk-aac opus vorbis samplerate)

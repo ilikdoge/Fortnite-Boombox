@@ -1,0 +1,18 @@
+[submodule "native/vorbis"]
+	path = native/vorbis
+	url = https://github.com/xiph/vorbis.git
+[submodule "native/ogg"]
+	path = native/ogg
+	url = https://github.com/xiph/ogg.git
+[submodule "native/opus"]
+	path = native/opus
+	url = https://github.com/xiph/opus.git
+[submodule "native/libsamplerate"]
+	path = native/libsamplerate
+	url = https://github.com/libsndfile/libsamplerate.git
+[submodule "native/fdk-aac"]
+	path = native/fdk-aac
+	url = https://github.com/mstorsjo/fdk-aac.git
+[submodule "native/node-addon-api"]
+	path = native/node-addon-api
+	url = https://github.com/nodejs/node-addon-api.git
