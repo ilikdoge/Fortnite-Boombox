@@ -14,6 +14,8 @@ Windows: msvc
 Linux: clang or gcc
 ```
 
+### building
+
 ```sh
 git clone https://github.com/ilikdoge/Fortnite-Boombox.git
 cd Fortnite-Boombox
