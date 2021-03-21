@@ -4,10 +4,31 @@ old project
 
 ## building and running
 
-<code>git clone https://github.com/ilikdoge/Fortnite-Boombox.git</code><br>
-<code>cd Fortnite-Boombox</code><br>
-<code>git submodule update --init --recursive</code><br>
-<code>npm install</code><br>
+### prerequisites
+
+```
+Node.js
+CMake
+
+Windows: msvc
+Linux: clang or gcc
+```
+
+```sh
+git clone https://github.com/ilikdoge/Fortnite-Boombox.git
+cd Fortnite-Boombox
+git submodule update --init --recursive
+npm install
+```
+
+### Note
+
+On windows it is necessary to put
+```c
+#define _USE_MATH_DEFINES
+```
+
+at the very beginning of the file located at `native/vorbis/test/util.c`
 
 ### running
 
