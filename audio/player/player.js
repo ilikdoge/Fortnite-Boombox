@@ -368,6 +368,8 @@ class Player extends EventEmitter{
 	}
 
 	start(){
+		if(this.fetching)
+			this.fetching.abort();
 		this.fetch_next_chunk(() => {
 			this._internal_start();
 		});
