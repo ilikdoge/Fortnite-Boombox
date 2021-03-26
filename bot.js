@@ -226,6 +226,10 @@ class Player{
 			data.apply(null, [packet]);
 		});
 
+		player.on('debug', (...args) => {
+			debug.apply(null, args);
+		});
+
 		player.on('error', (err) => {
 			player.destroy();
 			error.apply(null, [err]);
@@ -605,7 +609,7 @@ function send_packet(connection, buffer, cb){
 	audio_buffer.set(audio_nonce, 0);
 
 	connection.setSpeaking(1);
-	
+
 	var len = 28;
 
 	if(connection.authentication.mode == 'xsalsa20_poly1305_lite'){

@@ -33,7 +33,9 @@ class Player extends EventEmitter{
 		this.handler = handler;
 		this.handler_finished = false;
 
-		debug('PLAYER', 'INITIALIZE', track, handler);
+		process.nextTick(() => {
+			this.emit('debug', 'PLAYER', 'INITIALIZE', track, handler);
+		});
 
 		try{
 			const InCodec = Codec.from_codec(track.codec);
@@ -84,7 +86,7 @@ class Player extends EventEmitter{
 		});
 
 		if(out.sample_rate != this.track.sample_rate || out.channel_count != this.track.channel_count){
-			debug('PLAYER', 'DECODER UPDATE', out.sample_rate, out.channel_count, out.frame_size);
+			this.emit('debug', 'PLAYER', 'DECODER UPDATE', out.sample_rate, out.channel_count, out.frame_size);
 
 			if(out.sample_rate <= 0 || out.channel_count <= 0){
 				out.error = ERR_INVALID_INPUT;
@@ -184,7 +186,7 @@ class Player extends EventEmitter{
 		var processing = this.get_processing();
 
 		if(!processing){
-			debug('PLAYER', 'FRAME DROP', 'Nothing in processing queue');
+			this.emit('debug', 'PLAYER', 'FRAME DROP', 'Nothing in processing queue');
 
 			return null;
 		}
@@ -218,7 +220,7 @@ class Player extends EventEmitter{
 				return this.execute_cycle();
 			}
 
-			debug('PLAYER', 'FRAME DROP', 'No frame was produced');
+			this.emit('debug', 'PLAYER', 'FRAME DROP', 'No frame was produced');
 		}
 
 		while(this.frames.length <= 1){
@@ -252,7 +254,7 @@ class Player extends EventEmitter{
 	fetch_next_chunk(cb){
 		var fetching = this.handler.processNext(this.minimum_duration, (err, tr, done) => {
 			if(this.destroyed){
-				debug('PLAYER', 'LOG', 'destroyed but receiving data');
+				this.emit('debug', 'PLAYER', 'LOG', 'destroyed but receiving data');
 				console.trace();
 
 				debugger;
@@ -331,7 +333,7 @@ class Player extends EventEmitter{
 				}
 
 				if(this.destroyed){
-					debug('PLAYER', 'LOG', 'destroyed but cycling');
+					this.emit('debug', 'PLAYER', 'LOG', 'destroyed but cycling');
 					console.trace();
 
 					debugger;
@@ -350,7 +352,7 @@ class Player extends EventEmitter{
 				if(!this.cycle_paused){
 					this.frames_dropped += drop;
 
-					debug('PLAYER', 'FRAME DROP', 'Lagged behind', drop, 'frame(s) (' + -wait + 'ms)');
+					this.emit('debug', 'PLAYER', 'FRAME DROP', 'Lagged behind', drop, 'frame(s) (' + -wait + 'ms)');
 				}
 
 				cycles += drop;

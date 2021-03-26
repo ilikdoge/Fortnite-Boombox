@@ -284,7 +284,7 @@ class YoutubeLivePlayer extends AudioPlayer{
 		this.target_duration = duration;
 		this.head_sequence = -1;
 
-		debug('LIVESTREAM', 'INITIALIZE', url, duration);
+		this.emit('debug', 'LIVESTREAM', 'INITIALIZE', url, duration);
 	}
 
 	start(output){

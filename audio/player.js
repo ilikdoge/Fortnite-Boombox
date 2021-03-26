@@ -127,6 +127,10 @@ class AudioPlayer extends EventEmitter{
 					this.emit('finish');
 				});
 
+				this.player.on('debug', (...args) => {
+					this.emit.apply(this, ['debug'].concat(args));
+				});
+
 				process.nextTick(() => {
 					if(!this.destroyed)
 						this.emit('ready');
