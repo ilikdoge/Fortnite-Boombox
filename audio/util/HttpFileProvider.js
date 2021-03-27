@@ -28,6 +28,12 @@ class HttpSeekableStream extends Readable{
 		var stream = this.stream = request({url: this.file.url, headers: {range: 'bytes=' + (start ? start : '0') + '-' + (end ? end : '')}, gzip: true});
 
 		this.stream.on('response', (resp) => {
+			if(stream != this.stream){
+				stream.abort();
+
+				return;
+			}
+
 			if(resp.statusCode < 200 || resp.statusCode >= 400){
 				stream.abort();
 
@@ -57,16 +63,26 @@ class HttpSeekableStream extends Readable{
 		});
 
 		this.stream.on('data', (buffer) => {
+			if(stream != this.stream){
+				stream.abort();
+
+				return;
+			}
+
 			this.push(buffer);
 		});
 
 		this.stream.on('error', (err) => {
 			stream.abort();
 
+			if(stream != this.stream)
+				return;
 			this.emit('error', err);
 		});
 
 		this.stream.on('end', () => {
+			if(stream != this.stream)
+				return;
 			if(!stream.aborted)
 				this.push(null);
 		});
@@ -78,6 +94,7 @@ class HttpSeekableStream extends Readable{
 
 	_destroy(){
 		this.stream.abort();
+		this.stream = null;
 	}
 
 	_read(){}
