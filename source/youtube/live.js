@@ -134,28 +134,25 @@ class YoutubeLiveHandler extends EventEmitter{
 				req = request({url: this.lp.url + '&sq=' + (this.lp.head_sequence + 1), method: 'GET'});
 
 				req.on('response', (resp) => {
+					req.abort();
+
 					if(resp.statusCode < 200 || resp.statusCode >= 400)
 						cb(null, null, true);
 					else if(parseInt(resp.headers['x-head-seqnum'], 10) < this.current_sequence + 1)
 						cb(null, null, true);
 					else{
-						req.abort();
-
 						this.lp.update(resp.headers['x-head-seqnum']);
 
 						req = this.processNext(0, cb);
-
-						return;
 					}
-
-					req.abort();
 				});
 
-				req.on('error', (err) => {
-					if(aborted)
+				req.on('error', function(err){
+					if(aborted || this._aborted)
 						return;
 					if(err)
 						cb(err, null);
+					aborted = true;
 					req.abort();
 				})
 			}, this.current_sequence >= this.lp.head_sequence ? this.lp.target_duration * 1000 + this.lp.update_time - Date.now() : 0);
