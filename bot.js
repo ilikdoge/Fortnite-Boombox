@@ -603,7 +603,7 @@ function step_connection(connection){
 	audio_nonce.writeUIntBE(connection.timestamp, 4, 4);
 }
 
-function send_packet(connection, buffer, cb){
+function send_packet(connection, buffer){
 	step_connection(connection);
 
 	audio_buffer.set(audio_nonce, 0);
@@ -640,7 +640,7 @@ function send_packet(connection, buffer, cb){
 	var data = new Uint8Array(audio_buffer.buffer, 0, buffer.length + len);
 
 	for(var i = 0; i < passes && connection.sockets.udp; i++)
-		connection.sockets.udp.send(data).catch(cb);
+		connection.sockets.udp.send(data).catch(() => {});
 }
 
 class Bot extends EventEmitter{
@@ -695,9 +695,7 @@ class Bot extends EventEmitter{
 
 			if(!connection)
 				return this.player.clear(guild);
-			send_packet(connection, buffer, () => {
-				this.player.clear(guild);
-			});
+			send_packet(connection, buffer);
 		});
 
 		this.player.on('finish', (guild) => {
@@ -706,9 +704,7 @@ class Bot extends EventEmitter{
 			if(!connection)
 				return;
 			for(var i = 0; i < 5; i++)
-				send_packet(connection, empty_buffer, () => {
-					this.player.clear(guild);
-				});
+				send_packet(connection, empty_buffer);
 		});
 
 		this.player.on('start', () => {
