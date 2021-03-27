@@ -33,6 +33,12 @@ class YoutubeSeekableStream extends Readable{
 		var stream = this.stream = request({url: this.url, method: 'GET', headers: {range: 'bytes=' + (start ? start : '0') + '-' + (end ? end : '')}});
 
 		this.stream.on('response', (resp) => {
+			if(stream != this.stream){
+				stream.abort();
+
+				return;
+			}
+
 			this.url = resp.request.uri.href;
 			this.lp.update(resp.headers['x-head-seqnum']);
 
@@ -47,14 +53,26 @@ class YoutubeSeekableStream extends Readable{
 		});
 
 		this.stream.on('data', (buf) => {
+			if(stream != this.stream){
+				stream.abort();
+
+				return;
+			}
+
 			this.push(buf);
 		});
 
 		this.stream.on('error', (err) => {
+			stream.abort();
+
+			if(stream != this.stream)
+				return;
 			this.emit('error', err);
 		});
 
 		this.stream.on('end', () => {
+			if(stream != this.stream)
+				return;
 			if(!stream.aborted)
 				this.push(null);
 		});
@@ -66,6 +84,7 @@ class YoutubeSeekableStream extends Readable{
 
 	_destroy(){
 		this.stream.abort();
+		this.stream = null;
 	}
 
 	_read(){}
