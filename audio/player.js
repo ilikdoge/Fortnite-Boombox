@@ -36,7 +36,7 @@ class AudioPlayer extends EventEmitter{
 
 	setSpeed(speed){
 		if(this.player)
-			this.player.format.update_input(this.player.track.sample_rate * speed, this.player.track.channel_count);
+			this.player.setSpeed(speed);
 	}
 
 	seek(time){

@@ -67,6 +67,7 @@ class Player extends EventEmitter{
 
 		this.currentTime = 0;
 		this.volume = 1;
+		this.speed = 1;
 
 		this.processing = null;
 		this.queue = [];
@@ -91,7 +92,7 @@ class Player extends EventEmitter{
 
 		samples.next((chunk, offset, size) => {/* synchronous function */
 			if(this.codec_copy_allowed && this.codec_match && this.decoder.getSampleInfo &&
-				this.format.framesize.offset == 0 && !this.format.filters && this.volume == 1){
+				this.format.framesize.offset == 0 && !this.format.filters && this.volume == 1 && this.speed == 1){
 				var info = this.decoder.getSampleInfo(chunk, offset, size);
 
 				if(info.sample_rate == this.sample_rate && info.channel_count && this.format.output_channels){
@@ -478,6 +479,11 @@ class Player extends EventEmitter{
 		}
 
 		return null;
+	}
+
+	setSpeed(speed){
+		this.speed = speed;
+		this.format.update_input(this.track.sample_rate * speed, this.track.channel_count);
 	}
 
 	check_finished(){
