@@ -53,8 +53,8 @@ namespace opus_decoder{
 
 		Napi::Object packet_info = Napi::Object::New(info.Env());
 
-		packet_info["channel_count"] = opus_decoder_get_nb_samples((OpusDecoder*)dec, data, len);
-		packet_info["frame_size"] = opus_packet_get_nb_channels(data);
+		packet_info["channel_count"] = opus_packet_get_nb_channels(data);
+		packet_info["frame_size"] = opus_decoder_get_nb_samples((OpusDecoder*)dec, data, len);
 
 		return packet_info;
 	}
@@ -71,6 +71,7 @@ namespace opus_decoder{
 		dec["create"] = Napi::Function::New(env, create);
 		dec["destroy"] = Napi::Function::New(env, destroy);
 		dec["decode"] = Napi::Function::New(env, decode);
+		dec["getSampleInfo"] = Napi::Function::New(env, getSampleInfo);
 
 		return dec;
 	}

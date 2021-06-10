@@ -74,6 +74,18 @@ class AudioPlayer extends EventEmitter{
 		return 0;
 	}
 
+	set codec_copy_allowed(v){
+		if(this.player)
+			this.player.codec_copy_allowed = v;
+		return v;
+	}
+
+	get codec_copy_allowed(){
+		if(this.player)
+			return this.player.codec_copy_allowed;
+		return false;
+	}
+
 	probe(){
 		var stream = this.file.read(0);
 		var demuxer = [ISOM, MKV, Ogg];

@@ -25,6 +25,13 @@ class ProcessItem{
 	}
 }
 
+class Frame{
+	constructor(data, frame_size){
+		this.data = data;
+		this.frame_size = frame_size;
+	}
+}
+
 class Player extends EventEmitter{
 	constructor(track, handler, output){
 		super();
@@ -56,6 +63,7 @@ class Player extends EventEmitter{
 		this.frame_size = output.frame_size;
 		this.bitrate = output.bitrate;
 		this.sample_rate = output.sample_rate;
+		this.codec_copy_allowed = output.codec_copy_allowed;
 
 		this.currentTime = 0;
 		this.volume = 1;
@@ -82,6 +90,17 @@ class Player extends EventEmitter{
 		var out = null;
 
 		samples.next((chunk, offset, size) => {/* synchronous function */
+			if(this.codec_copy_allowed && this.codec_match && this.decoder.getSampleInfo &&
+				this.format.framesize.offset == 0 && !this.format.filters && this.volume == 1){
+				var info = this.decoder.getSampleInfo(chunk, offset, size);
+
+				if(info.sample_rate == this.sample_rate && info.channel_count && this.format.output_channels){
+					out = {error: null, data: new Uint8Array(chunk, offset, size), sample_rate: info.sample_rate, channel_count: info.channel_count, frame_size: info.frame_size, codec_copy: true};
+
+					return;
+				}
+			}
+
 			out = this.decoder.process(chunk, offset, size);
 		});
 
@@ -152,6 +171,12 @@ class Player extends EventEmitter{
 				return out.error;
 			if(!out.data)
 				continue;
+			if(out.codec_copy){
+				this.frames.push(out);
+
+				break;
+			}
+
 			var processed = this.format.process(out.data);
 
 			if(processed.error)
@@ -209,10 +234,16 @@ class Player extends EventEmitter{
 		}
 
 		if(this.frames.length){
-			var error = this.encode(this.frames.shift());
+			var frame = this.frames.shift();
 
-			if(error)
-				return error;
+			if(frame.codec_copy)
+				this.encoded.push(new Frame(frame.data, frame.frame_size));
+			else{
+				var error = this.encode(frame);
+
+				if(error)
+					return error;
+			}
 		}else{
 			if(processing.samples.end && this.queue.length){
 				this.processing = null;
@@ -246,7 +277,7 @@ class Player extends EventEmitter{
 
 		if(audio.error)
 			return audio.error;
-		this.encoded.push(audio.data);
+		this.encoded.push(new Frame(audio.data, this.frame_size));
 
 		return null;
 	}
@@ -293,20 +324,26 @@ class Player extends EventEmitter{
 
 	_internal_start(){
 		var start = Date.now();
-		var cycles = 0;
+		var prev = Date.now();
 		var cyc = () => {
 			if(this.cycle_id != start)
 				return;
 			if(this.check_finished())
 				return;
+			var frame_size = this.frame_size;
+
 			if(!this.cycle_paused){
 				var delivered = false;
 
 				if(this.encoded.length){
-					this.emit('data', this.encoded.shift());
+					var frame = this.encoded.shift();
+
+					frame_size = frame.frame_size;
+
+					this.emit('data', frame);
 
 					this.frames_delivered++;
-					this.currentTime += this.frame_size / this.sample_rate;
+					this.currentTime += frame.frame_size / this.sample_rate;
 
 					delivered = true;
 				}
@@ -317,10 +354,14 @@ class Player extends EventEmitter{
 					return this.error(new Error(error));
 				if(!delivered){
 					if(this.encoded.length){
-						this.emit('data', this.encoded.shift());
+						var frame = this.encoded.shift();
+
+						frame_size = frame.frame_size;
+
+						this.emit('data', frame);
 
 						this.frames_delivered++;
-						this.currentTime += this.frame_size / this.sample_rate;
+						this.currentTime += frame.frame_size / this.sample_rate;
 
 						if(!this.encoded.length){
 							error = this.execute_cycle();
@@ -343,11 +384,14 @@ class Player extends EventEmitter{
 					this.fetch_next_chunk();
 			}
 
-			var d = start - Date.now();
-			var wait = (++cycles * this.frame_size * 1000 / this.sample_rate) + d;
+			var d = prev - Date.now();
+			var time = frame_size * 1000 / this.sample_rate;
+			var wait = time + d;
 
-			if(wait < 0){
-				var drop = Math.ceil(-wait * this.sample_rate / this.frame_size / 1000);
+			prev += time;
+
+			if(wait < -time){
+				var drop = Math.ceil(-wait * this.sample_rate / (this.frame_size * 1000));
 
 				if(!this.cycle_paused){
 					this.frames_dropped += drop;
@@ -355,11 +399,11 @@ class Player extends EventEmitter{
 					this.emit('debug', 'PLAYER', 'FRAME DROP', 'Lagged behind', drop, 'frame(s) (' + -wait + 'ms)');
 				}
 
-				cycles += drop;
-				wait = (cycles * this.frame_size * 1000 / this.sample_rate) + d;
+				prev = Date.now();
+				wait = time;
 			}
 
-			setTimeout(cyc, wait - 1);
+			setTimeout(cyc, wait);
 		};
 
 		this.cycle_id = start;

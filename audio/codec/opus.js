@@ -79,7 +79,7 @@ class Decoder{
 	}
 
 	getSampleInfo(packet, offset, length){
-		var si = decode.getSampleInfo(packet, offset, length);
+		var si = decode.getSampleInfo(this.instance, packet, offset, length);
 
 		si.sample_rate = this.output.sample_rate;
 

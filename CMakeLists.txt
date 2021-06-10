@@ -1,5 +1,6 @@
 set(PROJECT_NAME "natives")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -O3 -std=c++17")
+add_definitions("-fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++17")
 project(${PROJECT_NAME})
 
 include_directories(${CMAKE_JS_INC})

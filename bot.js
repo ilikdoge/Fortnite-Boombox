@@ -10,51 +10,16 @@ const similarity = require('string-similarity');
 })();
 
 const Discord = require('discord.js');
-const secretbox = {};
-
-(async () => {
-	var lib = null;
-
-	try{
-		lib = require('sodium');
-		secretbox.methods = {
-			close: lib.api.crypto_secretbox_easy,
-			random: n => sodium.randombytes_buf(n)
-		};
-
-		return;
-	}catch(e){}
-
-	try{
-		lib = require('libsodium-wrappers');
-
-		if(lib.ready)
-			await lib.ready;
-		secretbox.methods = {
-			close: lib.api.crypto_secretbox_easy,
-			random: n => sodium.randombytes_buf(n)
-		};
-
-		return;
-	}catch(e){}
-
-	try{
-		lib = require('tweetnacl');
-		secretbox.methods = {
-			close: lib.secretbox,
-			random: n => tweetnacl.randomBytes(n)
-		};
-
-		return;
-	}catch(e){}
-})();
 
 const Map = require('./common/map');
 const commands = require('./commands/index');
 const messages = require('./common/messages');
 
 const AudioPlayer = require('./audio/player');
+const StreamDispatcher = require('./djsaudio/StreamDispatcher');
 const HttpFileProvider = require('./audio/util/HttpFileProvider');
+
+const empty_buffer = {data: new Uint8Array([0xf8, 0xff, 0xfe]), frame_size: 960};
 
 class WaitManager{
 	constructor(){
@@ -121,6 +86,10 @@ class RateLimit{
 			this.execute();
 	}
 }
+
+const audio_framesize = 2880;
+const audio_frequency = 48000;
+const audio_channels = 2;
 
 class Player{
 	constructor(){
@@ -200,7 +169,8 @@ class Player{
 			channel_count: audio_channels,
 			frame_size: audio_framesize,
 			bitrate: 32000,
-			resample_quality: 1//medium sinc
+			resample_quality: 1, //medium sinc
+			codec_copy_allowed: true
 		};
 
 		var player = null;
@@ -556,93 +526,6 @@ class Trigger{
 	}
 }
 
-const audio_nonce = Buffer.alloc(24);
-
-audio_nonce[0] = 0x80;
-audio_nonce[1] = 0x78;
-
-const audio_buffer = new Uint8Array(7678);
-
-const audio_framesize = 2880;
-const audio_frequency = 48000;
-const audio_channels = 2;
-
-const nonce_buffer = Buffer.alloc(24);
-
-const empty_buffer = (function(){
-	const opus = require('./audio/codec/opus');
-
-	var encoder = new opus.Encoder(opus.Encoder.OPUS_AUDIO, audio_frequency, audio_channels, 10);
-
-	var output = encoder.encode(new Uint8Array(audio_framesize * audio_channels), audio_framesize, 1000);
-
-	encoder.destroy();
-
-	if(output.error)
-		throw new Error(output.error);
-	return output.data;
-})();
-
-const passes = 1;
-
-function step_connection(connection){
-	if(!connection.sequence)
-		connection.sequence = 0;
-	if(!connection.timestamp)
-		connection.timestamp = 0;
-	connection.sequence++;
-
-	if(connection.sequence > 65535)
-		connection.sequence = 0;
-	connection.timestamp += audio_framesize;
-
-	if(connection.timestamp > 4294967295)
-		connection.timestamp = 0;
-	audio_nonce.writeUIntBE(connection.authentication.ssrc, 8, 4);
-	audio_nonce.writeUIntBE(connection.sequence, 2, 2);
-	audio_nonce.writeUIntBE(connection.timestamp, 4, 4);
-}
-
-function send_packet(connection, buffer){
-	step_connection(connection);
-
-	audio_buffer.set(audio_nonce, 0);
-
-	connection.setSpeaking(1);
-
-	var len = 28;
-
-	if(connection.authentication.mode == 'xsalsa20_poly1305_lite'){
-		len = 32;
-
-		if(!connection.nonce)
-			connection.nonce = 0;
-		connection.nonce++;
-
-		if(connection.nonce > Number.MAX_SAFE_INTEGER)
-			connection.nonce = 0;
-		nonce_buffer.writeUInt32BE(connection.nonce, 0);
-
-		const buf = secretbox.methods.close(buffer, nonce_buffer, connection.authentication.secret_key);
-
-		audio_buffer.set(buf, 12);
-		audio_buffer.set(nonce_buffer.slice(0, 4), 12 + buf.length);
-	}else if(connection.authentication.mode == 'xsalsa20_poly1305_suffix'){
-		len = 52;
-
-		const random = secretbox.methods.random(24);
-		const buf = secretbox.methods.close(buffer, random, connection.authentication.secret_key);
-
-		audio_buffer.set(buf, 12);
-		audio_buffer.set(random, 12 + buf.length);
-	}else
-		audio_buffer.set(secretbox.methods.close(buffer, audio_nonce, connection.authentication.secret_key), 12);
-	var data = new Uint8Array(audio_buffer.buffer, 0, buffer.length + len);
-
-	for(var i = 0; i < passes && connection.sockets.udp; i++)
-		connection.sockets.udp.send(data).catch(() => {});
-}
-
 class Bot extends EventEmitter{
 	constructor(token, options){
 		super();
@@ -690,12 +573,12 @@ class Bot extends EventEmitter{
 				this.sendMessage(item.message, msg);
 		});
 
-		this.player.on('data', (guild, buffer) => {
+		this.player.on('data', (guild, frame) => {
 			var connection = this.connections[guild];
 
 			if(!connection)
 				return this.player.clear(guild);
-			send_packet(connection, buffer);
+			connection.player.dispatcher.send(frame);
 		});
 
 		this.player.on('finish', (guild) => {
@@ -704,7 +587,7 @@ class Bot extends EventEmitter{
 			if(!connection)
 				return;
 			for(var i = 0; i < 5; i++)
-				send_packet(connection, empty_buffer);
+				connection.player.dispatcher.send(empty_buffer);
 		});
 
 		this.player.on('start', () => {
@@ -906,6 +789,8 @@ class Bot extends EventEmitter{
 			channel.join().then((connection) => {
 				this.connected++;
 				this.connections[channel.guild.id] = connection;
+
+				connection.player.dispatcher = new StreamDispatcher(connection);
 
 				connection.once('disconnect', () => {
 					clearTimeout(connection.no_audio_timeout);
