@@ -87,7 +87,7 @@ class RateLimit{
 	}
 }
 
-const audio_framesize = 2880;
+const audio_framesize = 960;
 const audio_frequency = 48000;
 const audio_channels = 2;
 
