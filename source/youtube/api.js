@@ -761,6 +761,7 @@ const ytapi = new class{
 	playlist(id, limit, callback){
 		api.playlist(id, limit).then((result) => {
 			callback(null, result);
+			callback(null, {end: true});
 		}).catch((err) => {
 			callback(new Error(err.message), null);
 		});
